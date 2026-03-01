@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secretaria — Gateway WhatsApp</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0d1117;
+            color: #c9d1d9;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 { color: #58a6ff; font-size: 22px; margin-bottom: 4px; }
+        h2 { color: #79c0ff; font-size: 16px; margin: 28px 0 12px; border-bottom: 1px solid #21262d; padding-bottom: 6px; }
+        h3 { color: #d2a8ff; font-size: 14px; margin: 18px 0 8px; }
+        .subtitle { color: #8b949e; font-size: 13px; margin-bottom: 20px; }
+        .url { color: #3fb950; }
+        .method { color: #f0883e; font-weight: bold; }
+        .header-key { color: #d2a8ff; }
+        .header-val { color: #a5d6ff; }
+        pre {
+            background: #161b22;
+            border: 1px solid #21262d;
+            border-radius: 6px;
+            padding: 14px;
+            overflow-x: auto;
+            margin: 8px 0 16px;
+            font-size: 13px;
+        }
+        code { color: #e6edf3; }
+        .field { color: #7ee787; }
+        .string { color: #a5d6ff; }
+        .comment { color: #8b949e; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 8px 0 16px;
+        }
+        th, td {
+            border: 1px solid #21262d;
+            padding: 6px 10px;
+            text-align: left;
+            font-size: 13px;
+        }
+        th { background: #161b22; color: #79c0ff; }
+        .tag {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .tag-post { background: #f0883e22; color: #f0883e; border: 1px solid #f0883e44; }
+        .tag-get { background: #3fb95022; color: #3fb950; border: 1px solid #3fb95044; }
+        .origens-list {
+            columns: 2;
+            list-style: none;
+            margin: 8px 0;
+        }
+        .origens-list li { padding: 2px 0; }
+        .origens-list li::before { content: "• "; color: #8b949e; }
+        hr { border: none; border-top: 1px solid #21262d; margin: 24px 0; }
+        a { color: #58a6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<h1>Secretaria</h1>
+<div class="subtitle">Gateway centralizado de mensagens WhatsApp via Evolution API</div>
+
+<hr>
+
+<h2>Base URL</h2>
+<pre><code><span class="url">https://0800.gestorconecta.com.br</span></code></pre>
+
+<h2>Autenticacao</h2>
+<p>Todas as requisicoes exigem header:</p>
+<pre><code><span class="header-key">X-Api-Key:</span> <span class="header-val">sua_api_key_aqui</span></code></pre>
+<p>Cada servico/origem tem sua propria API key cadastrada no banco.</p>
+
+<hr>
+
+<h2>Endpoints</h2>
+
+<h3><span class="tag tag-post">POST</span> /api/enviar.php</h3>
+<p>Envia uma mensagem WhatsApp.</p>
+<pre><code>{
+  <span class="field">"destino"</span>:      <span class="string">"5589981201204"</span>,       <span class="comment">// obrigatorio — telefone com DDI</span>
+  <span class="field">"tipo"</span>:         <span class="string">"texto"</span>,                  <span class="comment">// texto | imagem | documento | audio</span>
+  <span class="field">"conteudo"</span>:     { <span class="field">"texto"</span>: <span class="string">"Mensagem"</span> },  <span class="comment">// obrigatorio — varia por tipo</span>
+  <span class="field">"prioridade"</span>:   <span class="string">"normal"</span>,                 <span class="comment">// opcional: baixa | normal | alta | urgente</span>
+  <span class="field">"agendar_para"</span>: <span class="string">"2026-03-02T08:00:00-03:00"</span>, <span class="comment">// opcional — envia no horario</span>
+  <span class="field">"metadata"</span>:     { <span class="field">"pedido_id"</span>: 123 },      <span class="comment">// opcional — dados extras (logado)</span>
+  <span class="field">"callback_url"</span>: <span class="string">"https://..."</span>              <span class="comment">// opcional — recebe POST com status</span>
+}</code></pre>
+<p>Resposta: <code>201</code> (enviado) | <code>202</code> (agendado) | <code>4xx/5xx</code> (erro)</p>
+
+<h3><span class="tag tag-post">POST</span> /api/enviar-lote.php</h3>
+<p>Envia varias mensagens com intervalo anti-ban.</p>
+<pre><code>{
+  <span class="field">"mensagens"</span>:    [ ...array de mensagens... ], <span class="comment">// max 50</span>
+  <span class="field">"intervalo_ms"</span>: 3000                          <span class="comment">// delay entre envios (ms)</span>
+}</code></pre>
+
+<h3><span class="tag tag-get">GET</span> /api/log.php</h3>
+<p>Consulta historico de mensagens.</p>
+<pre><code><span class="url">/api/log.php?origem=monitor-projetos&amp;ultimas=24h</span>
+<span class="url">/api/log.php?status=erro&amp;de=2026-03-01&amp;ate=2026-03-02</span></code></pre>
+<p>Parametros: <code>origem</code>, <code>destino</code>, <code>status</code>, <code>de</code>, <code>ate</code>, <code>ultimas</code> (24h, 7d, 30d)</p>
+
+<h3><span class="tag tag-get">GET</span> /api/status.php?id=xxx</h3>
+<p>Retorna dados completos de uma mensagem pelo ID.</p>
+
+<h3><span class="tag tag-get">GET</span> /health</h3>
+<p>Health check. Retorna <code>ok</code> (sem autenticacao).</p>
+
+<hr>
+
+<h2>Tipos de Mensagem</h2>
+
+<table>
+    <tr>
+        <th>tipo</th>
+        <th>conteudo (JSON)</th>
+    </tr>
+    <tr>
+        <td>texto</td>
+        <td><code>{ "texto": "Mensagem aqui" }</code></td>
+    </tr>
+    <tr>
+        <td>imagem</td>
+        <td><code>{ "url": "https://...", "legenda": "opcional" }</code></td>
+    </tr>
+    <tr>
+        <td>documento</td>
+        <td><code>{ "url": "https://...", "nome": "relatorio.pdf", "legenda": "opcional" }</code></td>
+    </tr>
+    <tr>
+        <td>audio</td>
+        <td><code>{ "url": "https://..." }</code></td>
+    </tr>
+</table>
+
+<hr>
+
+<h2>Exemplo curl</h2>
+<pre><code>curl -X POST https://0800.gestorconecta.com.br/api/enviar.php \
+  -H "X-Api-Key: SUA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destino": "5589981201204",
+    "tipo": "texto",
+    "conteudo": { "texto": "Ola mundo!" }
+  }'</code></pre>
+
+<h2>Exemplo PHP</h2>
+<pre><code><span class="comment">// Copiar/colar em qualquer projeto PHP</span>
+function enviarWhatsApp($texto, $destino, $apiKey) {
+    $ch = curl_init('https://0800.gestorconecta.com.br/api/enviar.php');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode([
+            'destino' => $destino,
+            'tipo' => 'texto',
+            'conteudo' => ['texto' => $texto]
+        ]),
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'X-Api-Key: ' . $apiKey,
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($resp, true);
+}
+
+<span class="comment">// Uso:</span>
+$resultado = enviarWhatsApp('Teste!', '5589981201204', 'sec_xxx_...');
+</code></pre>
+
+<h2>Exemplo n8n (HTTP Request)</h2>
+<pre><code>Method:  POST
+URL:     https://0800.gestorconecta.com.br/api/enviar.php
+Headers: X-Api-Key = {{ $env.SECRETARIA_KEY }}
+Body:    {
+           "destino": "{{ $json.telefone }}",
+           "tipo": "texto",
+           "conteudo": { "texto": "{{ $json.mensagem }}" }
+         }</code></pre>
+
+<hr>
+
+<h2>Origens Cadastradas</h2>
+<p>Cada origem tem sua propria API key. Consultar no Supabase (tabela <code>secretaria_origens</code>).</p>
+<ul class="origens-list">
+    <li>monitor-projetos</li>
+    <li>n8n-pedidos</li>
+    <li>n8n-meta-ads</li>
+    <li>n8n-cobranca</li>
+    <li>control</li>
+    <li>loyal</li>
+    <li>alerta-licitacao</li>
+    <li>prontuario</li>
+    <li>darkflow</li>
+    <li>monitor-fabrica</li>
+    <li>backup</li>
+    <li>recupera</li>
+    <li>sympla-scraper</li>
+    <li>assistente</li>
+    <li>chat-camaleao</li>
+    <li>teste</li>
+</ul>
+
+<hr>
+
+<div class="subtitle" style="margin-top: 20px; text-align: center;">
+    Secretaria v1.0 — GestorConecta
+</div>
+
+</body>
+</html>

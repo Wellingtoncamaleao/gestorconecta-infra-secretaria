@@ -14,6 +14,7 @@ COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Aplicacao
+COPY index.html /var/www/html/index.html
 COPY api/ /var/www/html/api/
 COPY cron/ /var/www/html/cron/
 

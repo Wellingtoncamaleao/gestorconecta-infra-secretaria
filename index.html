@@ -92,7 +92,7 @@
 <h3><span class="tag tag-post">POST</span> /api/enviar.php</h3>
 <p>Envia uma mensagem WhatsApp.</p>
 <pre><code>{
-  <span class="field">"destino"</span>:      <span class="string">"5589981201204"</span>,       <span class="comment">// obrigatorio — telefone com DDI</span>
+  <span class="field">"destino"</span>:      <span class="string">"55890000000000"</span>,       <span class="comment">// obrigatorio — telefone com DDI</span>
   <span class="field">"tipo"</span>:         <span class="string">"texto"</span>,                  <span class="comment">// texto | imagem | documento | audio</span>
   <span class="field">"conteudo"</span>:     { <span class="field">"texto"</span>: <span class="string">"Mensagem"</span> },  <span class="comment">// obrigatorio — varia por tipo</span>
   <span class="field">"prioridade"</span>:   <span class="string">"normal"</span>,                 <span class="comment">// opcional: baixa | normal | alta | urgente</span>
@@ -155,7 +155,7 @@
   -H "X-Api-Key: SUA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "destino": "5589981201204",
+    "destino": "55890000000000",
     "tipo": "texto",
     "conteudo": { "texto": "Ola mundo!" }
   }'</code></pre>
@@ -183,7 +183,7 @@ function enviarWhatsApp($texto, $destino, $apiKey) {
 }
 
 <span class="comment">// Uso:</span>
-$resultado = enviarWhatsApp('Teste!', '5589981201204', 'sec_xxx_...');
+$resultado = enviarWhatsApp('Teste!', '55890000000000', 'sec_xxx_...');
 </code></pre>
 
 <h2>Exemplo n8n (HTTP Request)</h2>

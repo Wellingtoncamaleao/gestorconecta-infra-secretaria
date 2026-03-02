@@ -316,7 +316,7 @@ function formatarData(iso) {
 
 function formatarTelefone(tel) {
     if (!tel || tel.length < 11) return escapeHtml(tel);
-    // 5589981201204 -> +55 (89) 98120-1204
+    // 55899XXXXXXXX -> +55 (89) 9XXXX-XXXX
     var ddi = tel.substring(0, 2);
     var ddd = tel.substring(2, 4);
     var parte1 = tel.substring(4, 9);

@@ -6,7 +6,18 @@
 session_start();
 
 $senha = getenv('PAINEL_SENHA') ?: '';
-$apiKey = getenv('PAINEL_API_KEY') ?: '';
+
+// CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Sessao expira em 24h
+if (!empty($_SESSION['painel_auth']) && !empty($_SESSION['painel_expires']) && $_SESSION['painel_expires'] < time()) {
+    session_destroy();
+    session_start();
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 // Logout
 if (isset($_GET['logout'])) {
@@ -17,12 +28,31 @@ if (isset($_GET['logout'])) {
 
 // Login POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['senha'])) {
-    if (!empty($senha) && hash_equals($senha, $_POST['senha'])) {
+    // Anti brute-force: max 5 tentativas, bloqueio de 15 min
+    $tentativas = $_SESSION['login_tentativas'] ?? 0;
+    $bloqueioAte = $_SESSION['login_bloqueio'] ?? 0;
+
+    if ($bloqueioAte > time()) {
+        $erroLogin = true;
+        $erroBloqueio = true;
+    } elseif (empty($_POST['csrf']) || !hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf'])) {
+        $erroLogin = true;
+    } elseif (!empty($senha) && hash_equals($senha, $_POST['senha'])) {
+        session_regenerate_id(true);
         $_SESSION['painel_auth'] = true;
+        $_SESSION['painel_expires'] = time() + 86400; // 24h
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        unset($_SESSION['login_tentativas'], $_SESSION['login_bloqueio']);
         header('Location: /painel/');
         exit;
+    } else {
+        $tentativas++;
+        $_SESSION['login_tentativas'] = $tentativas;
+        if ($tentativas >= 5) {
+            $_SESSION['login_bloqueio'] = time() + 900; // 15 min
+        }
+        $erroLogin = true;
     }
-    $erroLogin = true;
 }
 
 // Se nao logado: mostra login
@@ -40,10 +70,13 @@ if (empty($_SESSION['painel_auth'])) {
     <div class="login-container">
         <h1>Secretaria</h1>
         <p class="subtitle">Painel de Comunicacoes</p>
-        <?php if (!empty($erroLogin)): ?>
+        <?php if (!empty($erroBloqueio)): ?>
+            <div class="erro">Muitas tentativas. Tente novamente em 15 minutos.</div>
+        <?php elseif (!empty($erroLogin)): ?>
             <div class="erro">Senha incorreta</div>
         <?php endif; ?>
         <form method="POST">
+            <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <input type="password" name="senha" placeholder="Senha" autofocus required>
             <button type="submit">Entrar</button>
         </form>
@@ -65,11 +98,6 @@ if (empty($_SESSION['painel_auth'])) {
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <script>
-        // API key injetada pelo PHP (nunca exposta no codigo-fonte)
-        const API_KEY = <?= json_encode($apiKey) ?>;
-    </script>
-
     <!-- Header -->
     <header class="header">
         <div class="header-left">

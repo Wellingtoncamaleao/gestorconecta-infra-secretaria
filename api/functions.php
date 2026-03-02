@@ -106,7 +106,7 @@ function validarPayload($body) {
     }
 
     $tipo = $body['tipo'] ?? 'texto';
-    if (!in_array($tipo, TIPOS_VALIDOS)) {
+    if (!in_array($tipo, TIPOS_VALIDOS, true)) {
         $erros[] = 'Tipo invalido. Aceitos: ' . implode(', ', TIPOS_VALIDOS);
     }
 
@@ -124,6 +124,12 @@ function validarPayload($body) {
             case 'audio':
                 if (empty($body['conteudo']['url'])) {
                     $erros[] = 'conteudo.url obrigatorio para tipo "' . $tipo . '"';
+                } else {
+                    $mediaUrl = $body['conteudo']['url'];
+                    $parsedMedia = parse_url($mediaUrl);
+                    if (!$parsedMedia || !in_array(strtolower($parsedMedia['scheme'] ?? ''), ['http', 'https'], true)) {
+                        $erros[] = 'conteudo.url deve ser HTTP ou HTTPS';
+                    }
                 }
                 break;
             case 'botoes':
@@ -138,7 +144,7 @@ function validarPayload($body) {
     }
 
     $prioridade = $body['prioridade'] ?? 'normal';
-    if (!in_array($prioridade, PRIORIDADES_VALIDAS)) {
+    if (!in_array($prioridade, PRIORIDADES_VALIDAS, true)) {
         $erros[] = 'Prioridade invalida. Aceitas: ' . implode(', ', PRIORIDADES_VALIDAS);
     }
 
@@ -155,10 +161,14 @@ function validarPayload($body) {
 function formatarTelefone($numero) {
     $limpo = preg_replace('/\D/', '', $numero);
 
-    if (strlen($limpo) === 11) {
+    // Auto-prefixar 55 para numeros brasileiros (10-11 digitos)
+    if (strlen($limpo) === 11 || strlen($limpo) === 10) {
         $limpo = '55' . $limpo;
-    } elseif (strlen($limpo) === 10) {
-        $limpo = '55' . $limpo;
+    }
+
+    // E.164: minimo 10, maximo 15 digitos
+    if (strlen($limpo) < 10 || strlen($limpo) > 15) {
+        responderErro('Numero de telefone invalido (espera-se 10-15 digitos)', 'TELEFONE_INVALIDO', 422);
     }
 
     return $limpo;
@@ -304,10 +314,50 @@ function registrarMensagem($dados) {
 // Atualizar status de mensagem
 // ============================================================
 function atualizarMensagem($id, $campos) {
-    return supabaseFetch('secretaria_mensagens?id=eq.' . $id, [
+    return supabaseFetch('secretaria_mensagens?id=eq.' . urlencode($id), [
         'metodo' => 'PATCH',
         'corpo' => $campos
     ]);
+}
+
+// ============================================================
+// Validar URL externa (anti-SSRF)
+// ============================================================
+function validarUrlExterna($url) {
+    if (empty($url)) return false;
+
+    $parsed = parse_url($url);
+    if ($parsed === false || empty($parsed['scheme']) || empty($parsed['host'])) {
+        return false;
+    }
+
+    // Apenas HTTP(S)
+    if (!in_array(strtolower($parsed['scheme']), ['http', 'https'], true)) {
+        return false;
+    }
+
+    $host = strtolower($parsed['host']);
+
+    // Bloquear localhost e variantes
+    $bloqueados = ['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]'];
+    if (in_array($host, $bloqueados, true)) {
+        return false;
+    }
+
+    // Bloquear IPs privados (RFC 1918) e link-local
+    $ip = gethostbyname($host);
+    if (filter_var($ip, FILTER_VALIDATE_IP)) {
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return false;
+        }
+    }
+
+    // Bloquear metadata de cloud (169.254.169.254)
+    if ($ip === '169.254.169.254') {
+        return false;
+    }
+
+    return true;
 }
 
 // ============================================================
@@ -315,6 +365,12 @@ function atualizarMensagem($id, $campos) {
 // ============================================================
 function dispararCallback($url, $dados) {
     if (empty($url)) return;
+
+    // Protecao SSRF: so permite URLs externas
+    if (!validarUrlExterna($url)) {
+        error_log('[SECRETARIA] Callback bloqueado (SSRF): ' . $url);
+        return;
+    }
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -357,6 +413,35 @@ function mb_str_split_safe($texto, $maxLen) {
     }
 
     return $partes;
+}
+
+// ============================================================
+// Rate limiting simples (baseado em arquivo tmp)
+// ============================================================
+function verificarRateLimit($origem, $maxPorMinuto = 30) {
+    $arquivo = sys_get_temp_dir() . '/secretaria_rate_' . md5($origem) . '.json';
+
+    $agora = time();
+    $dados = [];
+
+    if (file_exists($arquivo)) {
+        $conteudo = @file_get_contents($arquivo);
+        $dados = json_decode($conteudo, true) ?: [];
+    }
+
+    // Limpar entradas com mais de 60s
+    $dados = array_filter($dados, fn($ts) => ($agora - $ts) < 60);
+
+    if (count($dados) >= $maxPorMinuto) {
+        responderErro(
+            'Rate limit excedido (' . $maxPorMinuto . '/min). Tente novamente em breve.',
+            'RATE_LIMIT',
+            429
+        );
+    }
+
+    $dados[] = $agora;
+    @file_put_contents($arquivo, json_encode(array_values($dados)), LOCK_EX);
 }
 
 // ============================================================

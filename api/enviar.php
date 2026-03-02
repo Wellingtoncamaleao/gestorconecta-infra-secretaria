@@ -12,6 +12,9 @@ exigirMetodo('POST');
 // 1. Autenticar
 $origemAuth = autenticar();
 
+// 1.5 Rate limiting (30 msgs/min por origem)
+verificarRateLimit($origemAuth, 30);
+
 // 2. Ler body
 $body = lerBodyJson();
 
@@ -29,6 +32,11 @@ $prioridade = $body['prioridade'] ?? 'normal';
 $metadata = $body['metadata'] ?? [];
 $callbackUrl = $body['callback_url'] ?? null;
 $agendarPara = $body['agendar_para'] ?? null;
+
+// Validar callback_url se fornecida (anti-SSRF)
+if (!empty($callbackUrl) && !validarUrlExterna($callbackUrl)) {
+    responderErro('callback_url invalida ou aponta para rede interna', 'CALLBACK_INVALIDO', 422);
+}
 
 // 5. Gerar ID da mensagem
 $msgId = null;

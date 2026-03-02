@@ -129,11 +129,9 @@ function carregarMensagens() {
         params.push('offset=' + ((paginaAtual - 1) * LIMITE));
     }
 
-    var url = '/api/log.php?' + params.join('&');
+    var url = '/painel/proxy.php?acao=log&' + params.join('&');
 
-    fetch(url, {
-        headers: { 'X-Api-Key': API_KEY }
-    })
+    fetch(url)
         .then(function (resp) { return resp.json(); })
         .then(function (dados) {
             if (dados.sucesso) {
@@ -208,9 +206,7 @@ function atualizarPaginacao(total) {
 // Stats (24h)
 // ============================================================
 function atualizarStats() {
-    fetch('/api/log.php?ultimas=24h&limite=200', {
-        headers: { 'X-Api-Key': API_KEY }
-    })
+    fetch('/painel/proxy.php?acao=log&ultimas=24h&limite=200')
         .then(function (resp) { return resp.json(); })
         .then(function (dados) {
             if (!dados.sucesso) return;

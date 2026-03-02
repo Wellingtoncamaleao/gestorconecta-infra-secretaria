@@ -54,24 +54,34 @@ if (!empty($_GET['ultimas'])) {
 }
 
 $limite = min((int)($_GET['limite'] ?? 50), 200);
+$offset = max((int)($_GET['offset'] ?? 0), 0);
 
 // Montar query
-$query = 'secretaria_mensagens?select=id,origem_nome,destino,tipo,status,prioridade,metadata,criado_em,enviado_em,erro_detalhe';
+$query = 'secretaria_mensagens?select=id,origem_nome,destino,tipo,conteudo,status,prioridade,metadata,criado_em,enviado_em,erro_detalhe,evolution_message_id,agendar_para';
 $query .= '&order=criado_em.desc';
 $query .= '&limit=' . $limite;
+$query .= '&offset=' . $offset;
 
 if (!empty($filtros)) {
     $query .= '&' . implode('&', $filtros);
 }
 
-$resultado = supabaseFetch($query);
+$resultado = supabaseFetch($query, [
+    'headers' => ['Prefer: count=exact']
+]);
 
 if (!$resultado['ok']) {
     responderErro('Erro ao consultar log', 'SUPABASE_ERRO', 500);
 }
 
+$dados = $resultado['dados'] ?? [];
+$retornados = count($dados);
+
 responderJson([
     'sucesso' => true,
-    'total' => count($resultado['dados'] ?? []),
-    'mensagens' => $resultado['dados'] ?? []
+    'total' => $offset + $retornados + ($retornados >= $limite ? 1 : 0),
+    'retornados' => $retornados,
+    'offset' => $offset,
+    'limite' => $limite,
+    'mensagens' => $dados
 ]);

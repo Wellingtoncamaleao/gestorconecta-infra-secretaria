@@ -17,6 +17,7 @@ RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 COPY index.html /var/www/html/index.html
 COPY api/ /var/www/html/api/
 COPY cron/ /var/www/html/cron/
+COPY painel/ /var/www/html/painel/
 
 # Crontab: processar agendados a cada minuto
 RUN echo "* * * * * php /var/www/html/cron/agendados.php >> /var/log/secretaria-cron.log 2>&1" | crontab -

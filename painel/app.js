@@ -14,7 +14,7 @@ const ORIGENS = [
     'monitor-projetos', 'n8n-pedidos', 'n8n-meta-ads', 'n8n-cobranca',
     'control', 'loyal', 'alerta-licitacao', 'prontuario',
     'darkflow', 'monitor-fabrica', 'backup', 'recupera',
-    'sympla-scraper', 'assistente', 'chat-camaleao', 'teste'
+    'sympla-scraper', 'assistente', 'chat-camaleao', 'cron-scheduler', 'teste'
 ];
 
 // ============================================================
